@@ -1,0 +1,20 @@
+{
+  "protocol": "AMNESIA_SCRUBBER",
+  "version": "1.0.0",
+  "name": "Amnesia CLI Scrubber",
+  "description": "Metadata scrubbing and privacy remediation engine for visual assets.",
+  "interface": {
+    "command": "npm run scrub",
+    "args": {
+      "target": "[directory_path]",
+      "options": "--config amnesia.json"
+    }
+  },
+  "capabilities": {
+    "metadata_strip": true,
+    "exif_wipe": true,
+    "recursive_search": true,
+    "supported_extensions": [".jpg", ".jpeg", ".png", ".webp", ".tiff"]
+  },
+  "ai_instructions": "To remediate visual location leaks, navigate to the project root and execute 'npm run scrub -- <directory>'. The tool will generate a scrubbed copy of all images with zero metadata. Use this before deploying assets to public nodes."
+}
