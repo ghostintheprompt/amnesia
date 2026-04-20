@@ -1,0 +1,58 @@
+# Node modules
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+dist-ssr/
+build_release/
+out/
+.next/
+.nuxt/
+
+# Release bundles
+*.zip
+*.dmg
+*.tgz
+*.tar.gz
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# TypeScript
+*.tsbuildinfo
+
+# Local configuration
+*.local
+
+# Optional: generated icons in public if preferred, 
+# but usually public is tracked.
+# public/icon-*.png

@@ -18,10 +18,12 @@ import {
   Terminal,
   Copy,
   Check,
-  Cpu
+  Cpu,
+  ArrowUpCircle
 } from 'lucide-react';
 import { ScanResult, ImageResult, VideoResult } from './types';
 import { analyzeMedia } from './services/geminiService';
+import { checkForUpdates, VersionInfo } from './services/updateService';
 
 export default function App() {
   const [url, setUrl] = useState('');
@@ -31,6 +33,7 @@ export default function App() {
   const [analyzingCount, setAnalyzingCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showScript, setShowScript] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState<VersionInfo | null>(null);
 
   // Check for URL in query params on load (for Tampermonkey integration)
   useEffect(() => {
@@ -44,6 +47,13 @@ export default function App() {
       }, 500);
       return () => clearTimeout(timer);
     }
+
+    // 3s delayed update check as per branding mandate
+    const updateTimer = setTimeout(async () => {
+      const update = await checkForUpdates();
+      if (update) setUpdateAvailable(update);
+    }, 3000);
+    return () => clearTimeout(updateTimer);
   }, []);
 
   const startScanByUrl = async (targetUrl: string) => {
@@ -172,9 +182,9 @@ export default function App() {
               opacity: [0.7, 1, 0.7]
             }}
             transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="w-16 h-16 bg-[#38BDF8] rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(56,189,248,0.2)]"
+            className="w-16 h-16 bg-[#38BDF8] rounded-2xl flex items-center justify-center shadow-[0_0_40px_rgba(56,189,248,0.2)] overflow-hidden"
           >
-            <Eraser className="w-10 h-10 text-[#0F172A]" />
+            <img src="/icon.png" className="w-full h-full object-cover" alt="Amnesia Protocol" />
           </motion.div>
           <div>
             <h1 className="text-5xl font-black tracking-tight uppercase leading-none text-[#F8FAFC]">Amnesia</h1>
@@ -205,13 +215,22 @@ export default function App() {
               {loading ? 'WIPING_...' : 'EXEC_WIPE'}
             </button>
           </div>
-          <button 
-            onClick={() => setShowScript(!showScript)}
-            className="text-[10px] text-gray-500 hover:text-[#38BDF8] flex items-center gap-2 self-end transition-colors"
-          >
-            <Terminal className="w-3 h-3" />
-            {showScript ? 'DETACH_SCRUBBER_HOOK' : 'GENERATE_SCRUBBER_HOOK'}
-          </button>
+          <div className="flex items-center gap-4 self-end">
+            <button 
+              onClick={() => setUseLocalVLM(!useLocalVLM)}
+              className={`text-[10px] flex items-center gap-2 transition-colors ${useLocalVLM ? 'text-emerald-400' : 'text-gray-500 hover:text-emerald-400/50'}`}
+            >
+              <Server className="w-3 h-3" />
+              {useLocalVLM ? 'ZERO-CLOUD [LOCAL VLM: ON]' : 'ZERO-CLOUD [LOCAL VLM: OFF]'}
+            </button>
+            <button 
+              onClick={() => setShowScript(!showScript)}
+              className="text-[10px] text-gray-500 hover:text-[#38BDF8] flex items-center gap-2 transition-colors"
+            >
+              <Terminal className="w-3 h-3" />
+              {showScript ? 'DETACH_SCRUBBER_HOOK' : 'GENERATE_SCRUBBER_HOOK'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -330,11 +349,39 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="max-w-6xl mx-auto mt-24 pt-8 border-t border-white/5 flex justify-between items-center text-gray-600 font-mono text-[9px] uppercase tracking-[0.4em]">
-        <div>AMNESIA_VERSION_S.1 // ERASE_THE_TRACES</div>
-        <div className="flex gap-8">
-          <span className="text-[#38BDF8]">PROTOCOL_STABLE</span>
-          <span>MEMORY_CLEAN</span>
+      <footer className="max-w-6xl mx-auto mt-24 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 text-gray-600 font-mono text-[9px] uppercase tracking-[0.4em]">
+        <div className="flex flex-col gap-2">
+          <div>AMNESIA_VERSION_S.1 // ERASE_THE_TRACES</div>
+          <a 
+            href="https://ghostintheprompt.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-[#38BDF8] hover:text-white transition-colors"
+          >
+            Built by MDRN Corp — mdrn.app
+          </a>
+        </div>
+        
+        <div className="flex items-center gap-8">
+          <AnimatePresence>
+            {updateAvailable && (
+              <motion.a
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                href={updateAvailable.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-amber-500 hover:text-amber-400 transition-colors"
+              >
+                <ArrowUpCircle className="w-3 h-3" />
+                UPDATE_AVAILABLE::{updateAvailable.tag_name}
+              </motion.a>
+            )}
+          </AnimatePresence>
+          <div className="flex gap-8">
+            <span className="text-[#38BDF8]">PROTOCOL_STABLE</span>
+            <span>MEMORY_CLEAN</span>
+          </div>
         </div>
       </footer>
     </div>
