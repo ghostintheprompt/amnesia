@@ -1,5 +1,5 @@
 <div align="center">
-<img width="160" height="160" alt="AmnesiaIcon" src="icon.png" />
+<img width="500" height="500" alt="AmnesiaIcon" src="icon.png" />
 
 # Amnesia
 
