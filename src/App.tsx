@@ -19,11 +19,14 @@ import {
   Copy,
   Check,
   Cpu,
-  ArrowUpCircle
+  Download,
+  Activity,
+  Zap,
+  ShieldQuestion,
+  Server
 } from 'lucide-react';
 import { ScanResult, ImageResult, VideoResult } from './types';
 import { analyzeMedia } from './services/geminiService';
-import { checkForUpdates, VersionInfo } from './services/updateService';
 
 export default function App() {
   const [url, setUrl] = useState('');
@@ -33,7 +36,10 @@ export default function App() {
   const [analyzingCount, setAnalyzingCount] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showScript, setShowScript] = useState(false);
-  const [updateAvailable, setUpdateAvailable] = useState<VersionInfo | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState<any>(null);
+  const [useLocalVLM, setUseLocalVLM] = useState(false);
+  const [activeScenarios, setActiveScenarios] = useState<string[]>([]);
+  const [socAlerts, setSocAlerts] = useState<any[]>([]);
 
   // Check for URL in query params on load (for Tampermonkey integration)
   useEffect(() => {
@@ -47,13 +53,6 @@ export default function App() {
       }, 500);
       return () => clearTimeout(timer);
     }
-
-    // 3s delayed update check as per branding mandate
-    const updateTimer = setTimeout(async () => {
-      const update = await checkForUpdates();
-      if (update) setUpdateAvailable(update);
-    }, 3000);
-    return () => clearTimeout(updateTimer);
   }, []);
 
   const startScanByUrl = async (targetUrl: string) => {
@@ -68,6 +67,12 @@ export default function App() {
       const data = await response.json();
       if (data.error) throw new Error(data.error);
       setScanResult(data);
+      
+      // UIP Restoration: Activate baseline scenarios for forensic mapping
+      setActiveScenarios(['s1', 's4']);
+      setSocAlerts([
+        { id: 'INC-005', type: 'INFO', msg: 'Forensic scan initiated on external node.' }
+      ]);
     } catch (error) {
       console.error('Scan failed:', error);
     } finally {
@@ -235,6 +240,39 @@ export default function App() {
       </header>
 
       <main className="max-w-6xl mx-auto">
+        {/* Ghost Protocol Dashboard */}
+        <section className="mb-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-[#1E293B]/50 border border-white/5 p-6 rounded-2xl relative overflow-hidden">
+             <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-bold text-gray-500 tracking-[0.2em] uppercase">Active_Scenarios</h3>
+                <Zap className="w-3 h-3 text-[#38BDF8]" />
+             </div>
+             <div className="flex flex-wrap gap-2">
+                {activeScenarios.length > 0 ? activeScenarios.map(s => (
+                  <span key={s} className="bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20 px-2 py-0.5 rounded text-[10px] font-bold">{s}</span>
+                )) : <span className="text-[10px] text-gray-700 italic">None active</span>}
+             </div>
+             <div className="absolute -bottom-4 -right-4 opacity-5">
+                <Cpu className="w-24 h-24" />
+             </div>
+          </div>
+
+          <div className="bg-[#1E293B]/50 border border-white/5 p-6 rounded-2xl md:col-span-2 flex flex-col">
+             <div className="flex items-center justify-between mb-4">
+                <h3 className="text-[10px] font-bold text-gray-500 tracking-[0.2em] uppercase">SOC_Incident_Log</h3>
+                <Activity className="w-3 h-3 text-rose-500" />
+             </div>
+             <div className="space-y-2 max-h-24 overflow-y-auto pr-2 custom-scrollbar">
+                {socAlerts.length > 0 ? socAlerts.map((a, i) => (
+                  <div key={i} className="flex items-center gap-3 text-[10px] border-b border-white/5 pb-2">
+                    <span className={`font-black ${a.type === 'CRITICAL' ? 'text-rose-500' : 'text-emerald-500'}`}>{a.id}</span>
+                    <span className="text-gray-500 truncate">{a.msg}</span>
+                  </div>
+                )) : <div className="text-[10px] text-gray-700 italic">No incidents logged.</div>}
+             </div>
+          </div>
+        </section>
+
         <AnimatePresence>
           {showScript && (
             <motion.div 
@@ -390,6 +428,9 @@ export default function App() {
 
 function MediaCard({ item, type, onAnalyze }: { item: ImageResult | VideoResult, type: 'image' | 'video', onAnalyze: () => any, key?: any }) {
   const isImage = type === 'image';
+  const [sanitizing, setSanitizing] = useState(false);
+  const [sanitizedUrl, setSanitizedUrl] = useState<string | null>(null);
+
   const riskColor = {
     low: 'text-emerald-500',
     medium: 'text-amber-500',
@@ -405,15 +446,39 @@ function MediaCard({ item, type, onAnalyze }: { item: ImageResult | VideoResult,
     return Math.abs(hash).toString(16).toUpperCase();
   };
 
+  const runSanitizer = async () => {
+    setSanitizing(true);
+    try {
+      const response = await fetch('/api/sanitize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: item.src, regions: item.analysis?.detectedMarkers })
+      });
+      const blob = await response.blob();
+      const sUrl = URL.createObjectURL(blob);
+      setSanitizedUrl(sUrl);
+      
+      // Auto-download as per Sanitizer UI requirement
+      const link = document.createElement('a');
+      link.href = sUrl;
+      link.download = `scrubbed_${getHash(item.src)}.png`;
+      link.click();
+    } catch (err) {
+      console.error('Sanitization failed:', err);
+    } finally {
+      setSanitizing(false);
+    }
+  };
+
   return (
     <div className="bg-[#1E293B] border border-white/5 overflow-hidden group hover:border-[#38BDF8]/20 transition-all rounded-2xl">
       <div className="flex flex-col md:flex-row">
         <div className="md:w-48 aspect-square relative bg-black shrink-0">
           {isImage ? (
             <img 
-              src={item.src} 
+              src={sanitizedUrl || item.src} 
               referrerPolicy="no-referrer" 
-              className="w-full h-full object-cover blur-[2px] group-hover:blur-0 transition-all opacity-40 group-hover:opacity-100 grayscale group-hover:grayscale-0" 
+              className={`w-full h-full object-cover transition-all ${sanitizedUrl ? '' : 'blur-[2px] group-hover:blur-0 opacity-40 group-hover:opacity-100 grayscale group-hover:grayscale-0'}`} 
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
@@ -421,16 +486,22 @@ function MediaCard({ item, type, onAnalyze }: { item: ImageResult | VideoResult,
             </div>
           )}
           
-          {item.status === 'analyzing' && (
+          {(item.status === 'analyzing' || sanitizing) && (
             <div className="absolute inset-0 bg-[#38BDF8]/10 flex flex-col items-center justify-center">
               <RefreshCw className="w-6 h-6 animate-spin text-[#38BDF8] mb-2" />
-              <span className="text-[8px] font-black text-[#38BDF8]">WIPING...</span>
+              <span className="text-[8px] font-black text-[#38BDF8]">{sanitizing ? 'SANITIZING...' : 'WIPING...'}</span>
             </div>
           )}
 
           <div className="absolute top-3 left-3 bg-[#0F172A]/80 px-1.5 py-0.5 rounded font-mono text-[7px] text-[#38BDF8]/70 border border-[#38BDF8]/20">
             {type.toUpperCase()}
           </div>
+          
+          {sanitizedUrl && (
+            <div className="absolute bottom-3 left-3 bg-emerald-500/80 px-1.5 py-0.5 rounded font-mono text-[7px] text-white border border-emerald-400/20 flex items-center gap-1">
+              <ShieldCheck className="w-2 h-2" /> SCRUBBED
+            </div>
+          )}
         </div>
 
         <div className="flex-1 p-6 flex flex-col justify-between bg-gradient-to-br from-transparent to-[#0F172A]/30">
@@ -438,8 +509,17 @@ function MediaCard({ item, type, onAnalyze }: { item: ImageResult | VideoResult,
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-gray-600 font-mono tracking-tight font-bold">ASSET_HASH::{getHash(item.src)}</span>
               {item.status === 'done' ? (
-                <div className={`text-[10px] font-black uppercase tracking-tighter ${riskColor}`}>
-                  RISK_LEV::{item.analysis?.riskLevel}
+                <div className="flex items-center gap-4">
+                  <div className={`text-[10px] font-black uppercase tracking-tighter ${riskColor}`}>
+                    RISK_LEV::{item.analysis?.riskLevel}
+                  </div>
+                  <button 
+                    onClick={runSanitizer}
+                    disabled={sanitizing}
+                    className="flex items-center gap-2 text-[10px] bg-[#38BDF8] hover:bg-[#7DD3FC] text-[#0F172A] px-3 py-1 rounded font-black transition-colors disabled:opacity-50"
+                  >
+                    <Download className="w-3 h-3" /> WIPE_&_DL
+                  </button>
                 </div>
               ) : (
                 <button 

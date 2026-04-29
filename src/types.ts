@@ -23,3 +23,10 @@ export interface PrivacyAnalysis {
   recommendations: string[];
   summary: string;
 }
+
+export interface SOCAlert {
+  id: string;
+  type: 'INFO' | 'CRITICAL' | 'WARN';
+  msg: string;
+  timestamp: number;
+}

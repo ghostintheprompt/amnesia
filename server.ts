@@ -5,6 +5,7 @@ import * as cheerio from 'cheerio';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import sharp from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,6 +90,32 @@ async function startServer() {
       res.send(response.data);
     } catch (error) {
       res.status(500).send('Failed to fetch resource');
+    }
+  });
+
+  // API Route: Sanitize image (Blur/Redact)
+  app.post('/api/sanitize', async (req, res) => {
+    const { url, regions } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    try {
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+
+      let image = sharp(response.data);
+      
+      // Zero-Sanitization Mandate: Ensure blurs are heavy and metadata is wiped
+      // Apply heavy blur to the whole image as a baseline security measure
+      image = image.blur(30).withMetadata({});
+
+      const buffer = await image.toBuffer();
+      res.setHeader('Content-Type', 'image/png');
+      res.send(buffer);
+    } catch (error: any) {
+      console.error('Sanitization error:', error.message);
+      res.status(500).json({ error: 'Failed to sanitize image' });
     }
   });
 

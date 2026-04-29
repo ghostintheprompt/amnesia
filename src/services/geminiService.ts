@@ -9,21 +9,20 @@ export async function analyzeMedia(
   useLocalVLM: boolean = false
 ): Promise<PrivacyAnalysis> {
   const prompt = `
-    Analyze this ${mediaType} from a fashion website for privacy risks related to location tracking and personal information.
-    Specifically look for:
-    - Street signs, shop names, or recognizable landmarks.
-    - License plates or specific car models.
-    - Reflections in windows or mirrors that show the surrounding area.
-    - Visible text on packages, mail, or documents.
-    - Specific seasonal foliage or weather patterns that might narrow down location.
-    - Clothing labels or accessories that indicate a specific boutique or region.
+    [GHOST_PROTOCOL_TIER_ANALYSIS]
+    Perform a high-fidelity cybersecurity audit on this ${mediaType}. 
+    Analyze for the following high-inference markers:
+    - GEOLOCATION: Landmarks, street signs, unique foliage, architecture, or regional weather.
+    - EXFILTRATION_PATHS: Visible QR codes, barcodes, or text that could lead to internal nodes.
+    - PERSONAL_IDENTIFIERS: License plates, mail, ID cards, or facial reflections in glass/mirrors.
+    - COVERT_CHANNELS: Check for artifacts that might suggest steganographic payloads or digital watermarking.
 
-    Return a JSON response with the following structure:
+    Return a JSON response following this strict schema:
     {
       "riskLevel": "low" | "medium" | "high",
-      "detectedMarkers": ["list of specific things found"],
-      "recommendations": ["list of steps to mitigate the privacy risk"],
-      "summary": "a brief 1-2 sentence overview of the findings"
+      "detectedMarkers": ["list of specific forensic findings"],
+      "recommendations": ["remediation steps (e.g., 'Wipe via Amnesia Sanitizer', 'Scrub EXIF')"],
+      "summary": "Forensic audit overview (1-2 sentences)."
     }
   `;
 
